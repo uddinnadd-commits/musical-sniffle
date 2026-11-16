@@ -22,11 +22,16 @@ jobs:
       # If no Gradle project is visible, extract every zip into _src/ first.
       - name: Extract zipped source if needed
         run: |
+          echo "::group::Repository contents"
+          find . -maxdepth 3 -not -path './.git/*' | sort
+          echo "::endgroup::"
           if [ -z "$(find . -maxdepth 3 \( -name build.gradle -o -name build.gradle.kts \) -not -path './.git/*' | head -1)" ]; then
-            for z in $(find . -maxdepth 2 -name '*.zip' -not -path './.git/*'); do
-              echo "Extracting $z"
-              mkdir -p _src
-              unzip -q -o "$z" -d _src || true
+            # Space-safe loop: browsers often save duplicates as "name (1).zip".
+            find . -maxdepth 3 -iname '*.zip' -not -path './.git/*' -print0 | while IFS= read -r -d '' z; do
+              echo "Extracting: $z"
+              d="_src/$(basename "$z" .zip | tr ' ' '_')"
+              mkdir -p "$d"
+              unzip -q -o "$z" -d "$d" || echo "::warning::Could not unzip $z"
             done
           fi
 
